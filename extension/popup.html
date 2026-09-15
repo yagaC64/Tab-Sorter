@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab Sorter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header><span class="mark" aria-hidden="true">AZ<span>↓</span></span><div><h1>Tab Sorter</h1><p>A little order for your browser.</p></div></header>
+  <main>
+    <section aria-labelledby="sort-heading">
+      <div class="section-heading"><h2 id="sort-heading">Put tabs in their place</h2><span class="tag">This window</span></div>
+      <p>Alphabetical tabs. GitHub repos together, with issues before pull requests. Your fixed sites at the right.</p>
+      <button id="sort" class="primary" type="button">Sort this window <span aria-hidden="true">→</span></button>
+      <p class="hint">Chrome-pinned tabs keep their order on the left. Mixed and shared groups stay together.</p>
+    </section>
+    <section aria-labelledby="snapshot-heading">
+      <div class="section-heading"><h2 id="snapshot-heading">Keep a snapshot</h2><span class="tag">.md</span></div>
+      <label for="scope">Include</label>
+      <select id="scope"><option value="all">All windows in this Chrome profile</option><option value="current">This window only</option></select>
+      <label for="editor">Open with</label>
+      <select id="editor"><option value="notepad-aurora">Notepad Aurora</option><option value="default">System Markdown viewer</option></select>
+      <div class="actions"><button id="export-editor" type="button">Save &amp; open in editor</button><button id="download" class="secondary" type="button">Save Markdown…</button></div>
+      <p class="hint">Includes links, groups, date, time, and your profile label. Editor export saves to Documents / Tab Sorter Snapshots.</p>
+    </section>
+    <details id="preferences">
+      <summary>Preferences <span id="profile-summary">Set your profile label</span></summary>
+      <form id="settings-form">
+        <label for="profile">Chrome profile label</label>
+        <input id="profile" maxlength="80" placeholder="e.g. Work or Personal" autocomplete="off">
+        <p class="hint">Set once in each profile. Chrome does not provide its profile name to this extension.</p>
+        <label class="check"><input type="checkbox" id="group-github"> Create GitHub repository groups</label>
+        <label class="check"><input type="checkbox" id="auto-sort"> Re-sort after tabs open or navigate</label>
+        <div class="section-heading rules-heading"><h3>Fixed sites, left to right</h3><button id="add-rule" class="small secondary" type="button">+ Add</button></div>
+        <p class="hint">Use a hostname and optional path prefix. The first matching rule wins. Missing sites are not opened; matching Chrome-pinned tabs stay pinned.</p>
+        <div id="rules"></div>
+        <button type="submit" id="save-settings">Save preferences</button>
+      </form>
+    </details>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="saved-path" class="hint"></p>
+  </main>
+  <footer>Local only · No account access · No page scripts</footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

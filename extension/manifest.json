@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Sorter",
+  "version": "1.0.0",
+  "description": "Sort tabs, group GitHub repositories, keep favorite sites on the right, and save Markdown snapshots.",
+  "minimum_chrome_version": "120",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjI4/wK4/0pP24jnYsFWyv0uu6uFEM5wdqmS2Wc+9I658xBE2ELcGzeYUWDcGJxg+KacyPaeCMLSH/MPZklZJOYadjhQy8mUkC09Div+btTgmocCqXXJYAZ+huBbfY2kY4Kg8kNATloApz2v0q3mh6dDTdEEPf2Wwn8oQQFY8flgknJPN0lIKffY7I67p3mk7clOuPiE9iUYa3BPVS2/HtGmVt1fEN01O2p8mCQ5H6w+17PEyQ+inPwK3hj5vIjEQ1sj9m8JTF7gHn42QMoNizcUzwnvokvP30YHUmf2NAcbtMWkKUoYwa/xGFipo4/u2btBlM3nAN6188gTE0JqJdQIDAQAB",
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "storage",
+    "downloads",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Tab Sorter",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "incognito": "not_allowed",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}
