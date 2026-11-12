@@ -1,7 +1,9 @@
 import { normalizeSettings, planWindow, buildSnapshot } from './core.js';
+import { createDuplicateController } from './duplicates.js';
 
 const activeSorts = new Map();
 const pendingSorts = new Map();
+const duplicateReview = createDuplicateController(chrome);
 const settings = async () => normalizeSettings((await chrome.storage.local.get('settings')).settings || {});
 const ordered = tabs => [...tabs].sort((a, b) => a.index - b.index);
 const tabSignature = tabs => tabs.map(t => [t.id, t.windowId, t.pinned, t.url || t.pendingUrl || '', t.splitViewId ?? -1]).sort((a, b) => a[0] - b[0]);
@@ -109,6 +111,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
   (async () => {
     switch (message.type) {
+      case 'scan-duplicates': return { ok: true, ...(await duplicateReview.scan(message.windowId, message.tabId)) };
+      case 'close-duplicates': return { ok: true, ...(await duplicateReview.close(message.scanId, message.tabIds)) };
       case 'sort': return { ok: true, ...(await sortWindow(message.windowId)) };
       case 'snapshot': return { ok: true, ...(await snapshot(message.scope, message.windowId)) };
       case 'export-editor': {
@@ -138,9 +142,10 @@ function scheduleSort(windowId) {
   }, 900));
 }
 
-chrome.tabs.onCreated.addListener(tab => scheduleSort(tab.windowId));
+const isExtensionTab = tab => [tab.url, tab.pendingUrl].some(url => url?.startsWith(`chrome-extension://${chrome.runtime.id}/`));
+chrome.tabs.onCreated.addListener(tab => { if (!isExtensionTab(tab)) scheduleSort(tab.windowId); });
 chrome.tabs.onUpdated.addListener((_id, change, tab) => {
-  if (change.url || change.status === 'complete') scheduleSort(tab.windowId);
+  if (!isExtensionTab(tab) && (change.url || change.status === 'complete')) scheduleSort(tab.windowId);
 });
 chrome.tabs.onAttached.addListener((_id, info) => scheduleSort(info.newWindowId));
 chrome.windows.onRemoved.addListener(id => {

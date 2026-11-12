@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Sorter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sort tabs, group GitHub repositories, keep favorite sites on the right, and save Markdown snapshots.",
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjI4/wK4/0pP24jnYsFWyv0uu6uFEM5wdqmS2Wc+9I658xBE2ELcGzeYUWDcGJxg+KacyPaeCMLSH/MPZklZJOYadjhQy8mUkC09Div+btTgmocCqXXJYAZ+huBbfY2kY4Kg8kNATloApz2v0q3mh6dDTdEEPf2Wwn8oQQFY8flgknJPN0lIKffY7I67p3mk7clOuPiE9iUYa3BPVS2/HtGmVt1fEN01O2p8mCQ5H6w+17PEyQ+inPwK3hj5vIjEQ1sj9m8JTF7gHn42QMoNizcUzwnvokvP30YHUmf2NAcbtMWkKUoYwa/xGFipo4/u2btBlM3nAN6188gTE0JqJdQIDAQAB",

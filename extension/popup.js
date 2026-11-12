@@ -78,6 +78,15 @@ async function run(action) {
 }
 
 $('sort').onclick = () => run('sort');
+$('review-duplicates').onclick = async () => {
+  try {
+    const [active] = await chrome.tabs.query({ active: true, windowId });
+    const url = new URL(chrome.runtime.getURL('duplicates.html'));
+    url.searchParams.set('windowId', String(windowId));
+    if (active) url.searchParams.set('tabId', String(active.id));
+    await chrome.tabs.create({ windowId, url: url.href });
+  } catch (error) { status(error.message || String(error), true); }
+};
 $('download').onclick = () => run('download');
 $('export-editor').onclick = () => run('export-editor');
 $('add-rule').onclick = () => addRule();

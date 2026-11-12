@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review duplicate tabs · Tab Sorter</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="duplicates.css">
+</head>
+<body class="review-page">
+  <header><span class="mark" aria-hidden="true">AZ<span>↓</span></span><div><p class="eyebrow">TAB SORTER</p><h1>Keep one. Clear the extras.</h1><p>Review duplicate tabs across all normal windows in this Chrome profile.</p></div></header>
+  <main>
+    <section class="review-intro" aria-labelledby="review-heading">
+      <div class="section-heading"><h2 id="review-heading">Find duplicate tabs</h2><span class="tag">Exact web addresses</span></div>
+      <p>Extra copies are selected by default. Uncheck any you want to keep. Pinned tabs, shared groups, and split-view tabs stay open.</p>
+      <p class="hint">Addresses must match completely, including query strings and anything after #. Loading tabs and non-web pages are excluded. Review any unsaved work before closing.</p>
+      <div class="review-toolbar">
+        <label class="check"><input id="select-all" type="checkbox" disabled> Select all available</label>
+        <button id="rescan" class="secondary" type="button">Scan again</button>
+      </div>
+    </section>
+    <p id="scan-summary" role="status" aria-live="polite">Finding duplicate tabs…</p>
+    <div id="duplicate-groups" aria-label="Duplicate tab groups" aria-busy="true"></div>
+    <section id="close-result" hidden aria-labelledby="result-heading">
+      <h2 id="result-heading">Close results</h2>
+      <p id="result-summary" role="status" aria-live="polite"></p>
+      <ul id="result-details"></ul>
+    </section>
+    <p id="review-error" role="alert" hidden></p>
+  </main>
+  <footer class="review-footer">
+    <div><strong id="selection-count">0 tabs selected</strong><p>Only checked extras will close. At least one reviewed copy is kept.</p></div>
+    <button id="close-selected" type="button" disabled>Close selected tabs</button>
+  </footer>
+  <script type="module" src="duplicates-page.js"></script>
+</body>
+</html>

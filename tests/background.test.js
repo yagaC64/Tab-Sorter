@@ -183,6 +183,37 @@ test('a navigation event during an active sort runs a fresh automatic sort after
   assert.match(fixture.state.saved['status-1'].text, /Sorted 2 tabs/);
 });
 
+test('opening and navigating the duplicate review leaves tab order alone while ordinary navigation still sorts', async t => {
+  const scheduled = [];
+  t.mock.method(globalThis, 'setTimeout', callback => { scheduled.push(callback); return scheduled.length; });
+  t.mock.method(globalThis, 'clearTimeout', () => {});
+  const fixture = await workerFixture({
+    tabs: [tab(1, 'Zebra'), tab(2, 'Alpha')],
+    config: { autoSort: true },
+  });
+  const reviewUrl = `chrome-extension://${fixture.chrome.runtime.id}/duplicates.html?windowId=1`;
+  const reviewTab = tab(3, 'Review duplicates', { url: reviewUrl });
+  fixture.state.tabs.push(reviewTab);
+  // Chrome may expose either a committed URL or only pendingUrl on creation.
+  fixture.chrome.tabs.onCreated.listeners[0]({ ...reviewTab, url: '', pendingUrl: reviewUrl });
+  fixture.chrome.tabs.onCreated.listeners[0](reviewTab);
+  fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { url: reviewUrl }, reviewTab);
+  fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { status: 'complete' }, reviewTab);
+  assert.equal(scheduled.length, 0, 'review events must not schedule automatic sorting');
+  assert.equal(fixture.state.queries, 0);
+  assert.deepEqual(fixture.state.mutations, []);
+  assert.deepEqual(fixture.state.tabs.map(item => item.id), [1, 2, 3]);
+
+  const ordinaryTab = fixture.state.tabs[0];
+  ordinaryTab.url = 'https://example.com/another-page';
+  fixture.chrome.tabs.onUpdated.listeners[0](ordinaryTab.id, { url: ordinaryTab.url }, ordinaryTab);
+  assert.equal(scheduled.length, 1, 'ordinary navigation must still schedule automatic sorting');
+  await scheduled[0]();
+  assert.deepEqual(fixture.state.tabs.map(item => item.id), [2, 3, 1]);
+  assert.equal(fixture.state.saved['status-1'].error, false);
+  assert.match(fixture.state.saved['status-1'].text, /Sorted 3 tabs/);
+});
+
 test('all-window snapshots exclude incognito tabs and retain the visible order', async () => {
   const fixture = await workerFixture({
     tabs: [tab(1, 'Zebra'), tab(2, 'Alpha'), tab(3, 'Private', { windowId: 2, incognito: true })],
