@@ -25,7 +25,7 @@ The worker regression checks include tab closure, pin-order change, group member
 
 ## Remaining acceptance
 
-Load the `extension/` folder into the intended Chrome profile, set its label, and exercise Sort plus Save & open in editor. Automation could not use Chrome's internal extension-management page because of the browser URL policy. The installed helper's contents and exact extension-origin registration were checked independently; an actual personal-profile extension-to-helper call remains unexercised until the extension is loaded there.
+Load the `extension/` folder into the intended Chrome profile, set its label, and exercise Sort plus Save & open in editor. The installed helper's contents and exact extension-origin registration were checked independently; an actual personal-profile extension-to-helper call remains unexercised until the extension is loaded there.
 
 The headless browser checked snapshot content and the missing-helper recovery message. Native save/open was exercised separately against the installed editor; the interactive Chrome Save dialog still depends on the user's chosen location and confirmation.
 
