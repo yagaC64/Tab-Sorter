@@ -1,6 +1,6 @@
 # Tab Sorter
 
-Tab Sorter is a local Chrome extension that alphabetizes open tabs, groups GitHub work by repository, keeps chosen sites at the right edge, reviews duplicate tabs for selective closing, and saves dated Markdown snapshots.
+Tab Sorter is an open-source Chrome extension that alphabetizes open tabs, groups GitHub work by repository, keeps chosen sites at the right edge, reviews duplicate tabs for selective closing, and saves dated Markdown snapshots.
 
 ## Install in Chrome
 
@@ -116,3 +116,7 @@ python3 native/install.py --uninstall
 ```
 
 Uninstalling the helper leaves saved Markdown snapshots in place.
+
+## License
+
+[MIT](LICENSE) © 2026 WD Martinez.
