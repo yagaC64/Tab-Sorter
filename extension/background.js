@@ -1,9 +1,19 @@
 import { normalizeSettings, planWindow, buildSnapshot } from './core.js';
 import { createDuplicateController } from './duplicates.js';
+import { createTabManagerController } from './tab-manager.js';
 
 const activeSorts = new Map();
 const pendingSorts = new Map();
 const duplicateReview = createDuplicateController(chrome);
+const tabManager = createTabManagerController(chrome);
+let closingTabs = false;
+
+async function closeReviewedTabs(operation) {
+  if (closingTabs) throw new Error('Another tab close operation is running. Wait for it to finish, then refresh your list.');
+  closingTabs = true;
+  try { return await operation(); }
+  finally { closingTabs = false; }
+}
 const settings = async () => normalizeSettings((await chrome.storage.local.get('settings')).settings || {});
 const ordered = tabs => [...tabs].sort((a, b) => a.index - b.index);
 const tabSignature = tabs => tabs.map(t => [t.id, t.windowId, t.pinned, t.url || t.pendingUrl || '', t.splitViewId ?? -1]).sort((a, b) => a[0] - b[0]);
@@ -112,7 +122,9 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   (async () => {
     switch (message.type) {
       case 'scan-duplicates': return { ok: true, ...(await duplicateReview.scan(message.windowId, message.tabId)) };
-      case 'close-duplicates': return { ok: true, ...(await duplicateReview.close(message.scanId, message.tabIds)) };
+      case 'close-duplicates': return { ok: true, ...(await closeReviewedTabs(() => duplicateReview.close(message.scanId, message.tabIds))) };
+      case 'scan-managed-tabs': return { ok: true, ...(await tabManager.scan(message.windowId, message.allowPinned)) };
+      case 'close-managed-tabs': return { ok: true, ...(await closeReviewedTabs(() => tabManager.close(message.scanId, message.tabIds))) };
       case 'sort': return { ok: true, ...(await sortWindow(message.windowId)) };
       case 'snapshot': return { ok: true, ...(await snapshot(message.scope, message.windowId)) };
       case 'export-editor': {

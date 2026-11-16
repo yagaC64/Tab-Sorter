@@ -1,3 +1,5 @@
+import { closeAndConfirmTab } from './tab-close.js';
+
 const SCAN_KEY = 'duplicateScan';
 const SCAN_LIFETIME_MS = 15 * 60 * 1000;
 
@@ -74,10 +76,6 @@ export function findDuplicateGroups(windows, groups = [], preferredWindowId, pre
 function sameReviewedTab(current, reviewed) {
   return current && stableWebUrl(current) === reviewed.url &&
     current.windowId === reviewed.windowId && groupId(current) === reviewed.groupId;
-}
-
-function missingTab(error, id) {
-  return new RegExp(`^(?:No tab with id: ${id}\\.?|Invalid tab ID: ${id}\\.?)$`, 'i').test(error?.message || '');
 }
 
 /** Close only reviewed candidates, after immediate revalidation of each candidate and its original keeper. */
@@ -166,19 +164,9 @@ export function createDuplicateController(api) {
           result.skipped.push({ id, reason: 'This tab became active after the review and was kept.' });
           continue;
         }
-        try {
-          await api.tabs.remove(id);
-        } catch {
-          result.failed.push({ id, reason: 'Chrome could not close this tab. Review it and try again.' });
-          continue;
-        }
-        try {
-          await api.tabs.get(id);
-          result.failed.push({ id, reason: 'This tab remained open; the page may have canceled closing.' });
-        } catch (error) {
-          if (missingTab(error, id)) result.closed.push(id);
-          else result.failed.push({ id, reason: 'Chrome did not confirm whether this tab closed. Refresh the list.' });
-        }
+        const removal = await closeAndConfirmTab(api, id);
+        if (removal.closed) result.closed.push(id);
+        else result.failed.push({ id, reason: removal.reason });
       }
       return result;
     } finally {

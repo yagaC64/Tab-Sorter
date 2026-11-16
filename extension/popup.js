@@ -78,6 +78,13 @@ async function run(action) {
 }
 
 $('sort').onclick = () => run('sort');
+$('manage-tabs').onclick = async () => {
+  try {
+    const url = new URL(chrome.runtime.getURL('tabs.html'));
+    url.searchParams.set('windowId', String(windowId));
+    await chrome.tabs.create({ windowId, url: url.href });
+  } catch (error) { status(error.message || String(error), true); }
+};
 $('review-duplicates').onclick = async () => {
   try {
     const [active] = await chrome.tabs.query({ active: true, windowId });
