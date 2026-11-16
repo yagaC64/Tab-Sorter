@@ -7,7 +7,7 @@ const tab = (id, title, extra = {}) => ({ id, title, url: `https://example.com/$
 
 // These tests exercise the production message handler and its failure boundaries.
 // They do not model or claim Chromium's grouping/reordering API semantics.
-async function workerFixture({ tabs = [], groups = [], config = {}, beforeQuery, nativeReply, nativeError } = {}) {
+async function workerFixture({ tabs = [], groups = [], config = {}, beforeQuery, beforeRemove, nativeReply, nativeError } = {}) {
   const state = { tabs: structuredClone(tabs), groups: structuredClone(groups), queries: 0, mutations: [], saved: {} };
   const chrome = {
     runtime: {
@@ -20,7 +20,11 @@ async function workerFixture({ tabs = [], groups = [], config = {}, beforeQuery,
     },
     storage: {
       local: { get: async () => ({ settings: config }) },
-      session: { set: async value => Object.assign(state.saved, value) },
+      session: {
+        get: async key => ({ [key]: structuredClone(state.saved[key]) }),
+        set: async value => Object.assign(state.saved, structuredClone(value)),
+        remove: async key => { delete state.saved[key]; },
+      },
     },
     tabs: {
       query: async filter => {
@@ -28,6 +32,16 @@ async function workerFixture({ tabs = [], groups = [], config = {}, beforeQuery,
         return structuredClone(state.tabs.filter(item =>
           (filter.windowId === undefined || item.windowId === filter.windowId) &&
           (filter.groupId === undefined || item.groupId === filter.groupId)));
+      },
+      get: async id => {
+        const current = state.tabs.find(item => item.id === id);
+        if (!current) throw new Error(`No tab with id: ${id}.`);
+        return structuredClone(current);
+      },
+      remove: async id => {
+        state.mutations.push({ type: 'remove', id });
+        await beforeRemove?.(state, id);
+        state.tabs = state.tabs.filter(item => item.id !== id);
       },
       move: async (id, { index }) => {
         state.mutations.push({ type: 'move', id, index });
@@ -52,7 +66,10 @@ async function workerFixture({ tabs = [], groups = [], config = {}, beforeQuery,
       move: async () => { throw new Error('Group movement requires the real-browser integration test.'); },
     },
     windows: {
-      getAll: async () => [{ id: 1, incognito: false }, { id: 2, incognito: true }],
+      getAll: async options => [{ id: 1, type: 'normal', incognito: false, focused: true }, { id: 2, type: 'normal', incognito: true }].map(window => ({
+        ...window,
+        ...(options?.populate ? { tabs: structuredClone(state.tabs.filter(item => item.windowId === window.id)) } : {}),
+      })),
       onRemoved: event(),
     },
   };
@@ -183,36 +200,82 @@ test('a navigation event during an active sort runs a fresh automatic sort after
   assert.match(fixture.state.saved['status-1'].text, /Sorted 2 tabs/);
 });
 
-test('opening and navigating the duplicate review leaves tab order alone while ordinary navigation still sorts', async t => {
-  const scheduled = [];
-  t.mock.method(globalThis, 'setTimeout', callback => { scheduled.push(callback); return scheduled.length; });
-  t.mock.method(globalThis, 'clearTimeout', () => {});
-  const fixture = await workerFixture({
-    tabs: [tab(1, 'Zebra'), tab(2, 'Alpha')],
-    config: { autoSort: true },
-  });
-  const reviewUrl = `chrome-extension://${fixture.chrome.runtime.id}/duplicates.html?windowId=1`;
-  const reviewTab = tab(3, 'Review duplicates', { url: reviewUrl });
-  fixture.state.tabs.push(reviewTab);
-  // Chrome may expose either a committed URL or only pendingUrl on creation.
-  fixture.chrome.tabs.onCreated.listeners[0]({ ...reviewTab, url: '', pendingUrl: reviewUrl });
-  fixture.chrome.tabs.onCreated.listeners[0](reviewTab);
-  fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { url: reviewUrl }, reviewTab);
-  fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { status: 'complete' }, reviewTab);
-  assert.equal(scheduled.length, 0, 'review events must not schedule automatic sorting');
-  assert.equal(fixture.state.queries, 0);
-  assert.deepEqual(fixture.state.mutations, []);
-  assert.deepEqual(fixture.state.tabs.map(item => item.id), [1, 2, 3]);
+for (const firstKind of ['duplicates', 'managed-tabs']) {
+  test(`${firstKind} closure blocks the other closing feature until completion without consuming its review`, async () => {
+    let release;
+    let markPaused;
+    const gate = new Promise(resolve => { release = resolve; });
+    const paused = new Promise(resolve => { markPaused = resolve; });
+    let removalCalls = 0;
+    const fixture = await workerFixture({
+      tabs: [1, 2, 3].map(id => tab(id, `Copy ${id}`, { url: 'https://example.com/shared', status: 'complete' })),
+      beforeRemove: async () => { if (++removalCalls === 1) { markPaused(); await gate; } },
+    });
+    const duplicates = await fixture.request({ type: 'scan-duplicates', windowId: 1 });
+    const picker = await fixture.request({ type: 'scan-managed-tabs', windowId: 1, allowPinned: false });
+    assert.equal(duplicates.ok, true, duplicates.error);
+    assert.equal(picker.ok, true, picker.error);
+    const requests = {
+      duplicates: { type: 'close-duplicates', scanId: duplicates.scanId, tabIds: [2] },
+      'managed-tabs': { type: 'close-managed-tabs', scanId: picker.scanId, tabIds: [1] },
+    };
+    const secondKind = firstKind === 'duplicates' ? 'managed-tabs' : 'duplicates';
+    const first = fixture.request(requests[firstKind]);
+    await paused;
+    const blocked = await fixture.request(requests[secondKind]);
+    release();
+    const completed = await first;
+    assert.equal(blocked.ok, false, 'a competing feature must not close tabs concurrently');
+    assert.match(blocked.error, /clos.*(?:running|progress)|(?:running|progress).*clos/i);
+    assert.equal(removalCalls, 1, 'the competing controller must not reach Chrome removal');
+    assert.equal(completed.ok, true, completed.error);
+    assert.deepEqual(completed.closed, requests[firstKind].tabIds);
 
-  const ordinaryTab = fixture.state.tabs[0];
-  ordinaryTab.url = 'https://example.com/another-page';
-  fixture.chrome.tabs.onUpdated.listeners[0](ordinaryTab.id, { url: ordinaryTab.url }, ordinaryTab);
-  assert.equal(scheduled.length, 1, 'ordinary navigation must still schedule automatic sorting');
-  await scheduled[0]();
-  assert.deepEqual(fixture.state.tabs.map(item => item.id), [2, 3, 1]);
-  assert.equal(fixture.state.saved['status-1'].error, false);
-  assert.match(fixture.state.saved['status-1'].text, /Sorted 3 tabs/);
-});
+    const retry = await fixture.request(requests[secondKind]);
+    assert.equal(retry.ok, true, retry.error);
+    if (firstKind === 'duplicates') {
+      assert.deepEqual(retry.closed, [1], 'picker review remains usable after the earlier operation completes');
+      assert.deepEqual(fixture.state.tabs.map(item => item.id), [3]);
+    } else {
+      assert.deepEqual(retry.closed, [], 'duplicate keeper loss is rechecked after the picker operation');
+      assert.deepEqual(retry.skipped.map(item => item.id), [2]);
+      assert.deepEqual(fixture.state.tabs.map(item => item.id), [2, 3]);
+    }
+  });
+}
+
+for (const page of ['duplicates.html', 'tabs.html']) {
+  test(`opening and navigating ${page} leaves tab order alone while ordinary navigation still sorts`, async t => {
+    const scheduled = [];
+    t.mock.method(globalThis, 'setTimeout', callback => { scheduled.push(callback); return scheduled.length; });
+    t.mock.method(globalThis, 'clearTimeout', () => {});
+    const fixture = await workerFixture({
+      tabs: [tab(1, 'Zebra'), tab(2, 'Alpha')],
+      config: { autoSort: true },
+    });
+    const reviewUrl = `chrome-extension://${fixture.chrome.runtime.id}/${page}?windowId=1`;
+    const reviewTab = tab(3, 'Review duplicates', { url: reviewUrl });
+    fixture.state.tabs.push(reviewTab);
+    // Chrome may expose either a committed URL or only pendingUrl on creation.
+    fixture.chrome.tabs.onCreated.listeners[0]({ ...reviewTab, url: '', pendingUrl: reviewUrl });
+    fixture.chrome.tabs.onCreated.listeners[0](reviewTab);
+    fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { url: reviewUrl }, reviewTab);
+    fixture.chrome.tabs.onUpdated.listeners[0](reviewTab.id, { status: 'complete' }, reviewTab);
+    assert.equal(scheduled.length, 0, 'review events must not schedule automatic sorting');
+    assert.equal(fixture.state.queries, 0);
+    assert.deepEqual(fixture.state.mutations, []);
+    assert.deepEqual(fixture.state.tabs.map(item => item.id), [1, 2, 3]);
+
+    const ordinaryTab = fixture.state.tabs[0];
+    ordinaryTab.url = 'https://example.com/another-page';
+    fixture.chrome.tabs.onUpdated.listeners[0](ordinaryTab.id, { url: ordinaryTab.url }, ordinaryTab);
+    assert.equal(scheduled.length, 1, 'ordinary navigation must still schedule automatic sorting');
+    await scheduled[0]();
+    assert.deepEqual(fixture.state.tabs.map(item => item.id), [2, 3, 1]);
+    assert.equal(fixture.state.saved['status-1'].error, false);
+    assert.match(fixture.state.saved['status-1'].text, /Sorted 3 tabs/);
+  });
+}
 
 test('all-window snapshots exclude incognito tabs and retain the visible order', async () => {
   const fixture = await workerFixture({

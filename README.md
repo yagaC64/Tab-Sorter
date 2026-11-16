@@ -1,6 +1,6 @@
 # Tab Sorter
 
-Tab Sorter is an open-source Chrome extension that alphabetizes open tabs, groups GitHub work by repository, keeps chosen sites at the right edge, reviews duplicate tabs for selective closing, and saves dated Markdown snapshots.
+Tab Sorter is an open-source Chrome extension for organizing and reviewing open tabs. It alphabetizes tabs, groups GitHub work by repository, keeps chosen sites at the right edge, lets you select open or duplicate tabs to close, and saves dated Markdown snapshots.
 
 ## Install in Chrome
 
@@ -20,7 +20,7 @@ Repeat installation and labeling in each Chrome profile you use. Preferences sta
 2. In each Chrome profile with Tab Sorter installed, open `chrome://extensions` and click **Reload** on Tab Sorter.
 3. Reopen Tab Sorter to use the updated version. Existing preferences remain saved; do not uninstall and reinstall.
 
-Unpacked extensions do not receive automatically distributed updates. [Reload the extension](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#reload) so Chrome loads its updated manifest and service worker. Rerun **Install Editor Helper.command** only when native-helper files change; the duplicate-review update does not require a helper reinstall or new permissions.
+Unpacked extensions do not receive automatically distributed updates. [Reload the extension](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#reload) so Chrome loads its updated manifest and service worker. Rerun **Install Editor Helper.command** only when native-helper files change; tab management and duplicate review do not require a helper reinstall or new permissions.
 
 ## Organize your tabs
 
@@ -38,6 +38,18 @@ In **Preferences**, add, edit, remove, or reorder fixed sites using **Earlier** 
 Sorting is manual by default. Enable **Re-sort after tabs open or navigate** for automatic sorting. Turn off **Create GitHub repository groups** to retain existing groups and sort ungrouped GitHub tabs without creating repository groups.
 
 Exit Chrome split view before sorting. If tabs change during a sort, the extension reports the interruption; some tabs may already have moved. Let the window settle and choose **Sort this window** again. Rearrangement uses Chrome's [Tabs API](https://developer.chrome.com/docs/extensions/reference/api/tabs) and [Tab Groups API](https://developer.chrome.com/docs/extensions/reference/api/tabGroups).
+
+## Manage open tabs
+
+Choose **Manage open tabs** in the popup for a full-page picker of normal windows in the current Chrome profile, excluding incognito. Within each window, top-to-bottom rows match the browser's left-to-right tab-strip order. The current window appears first and expanded; expand or collapse the other windows as needed. Opening the picker does not sort or rearrange tabs.
+
+- Nothing is checked by default. Select individual tabs, or use **Select shown tabs** for eligible rows visible in expanded windows. **Close selected tabs** closes only checked, shown tabs.
+- Filter by title or address without changing tab order. Changing the filter clears the selection; collapsing a window clears that window's selection. **Clear selection** unchecks everything.
+- **Show tab** brings an existing tab and its window into view for inspection; it does not navigate or move the tab.
+- Enable **Allow selecting pinned tabs** to include pins in a fresh review. Shared-group members, split-view tabs, loading tabs, unavailable addresses, and Tab Sorter pages remain visible but protected. Stable Chrome internal pages, local-file tabs, and blank tabs can be selected.
+- Selected tabs are checked again before closing. Navigation, movement to another window, group or pin changes, new protection, or newly active state can cause a tab to be skipped. Results distinguish confirmed closures, skipped tabs, and failures.
+
+Review unsaved work before closing. Only the latest tab-management review is valid, and it expires after 15 minutes. After a close action, choose **Refresh list** before selecting more tabs. Refreshing or changing the pinned-tab option clears the selection and reads the current tab order.
 
 ## Review duplicate tabs
 
@@ -75,9 +87,9 @@ The helper uses Chrome's [native messaging](https://developer.chrome.com/docs/ex
 
 | Permission | Purpose |
 | --- | --- |
-| `tabs` | Read tab titles and URLs for sorting, duplicate review, and snapshots. |
+| `tabs` | Read tab titles and URLs for sorting, tab management, duplicate review, and snapshots. |
 | `tabGroups` | Read, create, name, and move repository groups. |
-| `storage` | Save per-profile preferences and operation status locally; keep the latest duplicate review in session storage. |
+| `storage` | Save per-profile preferences and operation status locally; keep the latest tab-management and duplicate reviews in session storage. |
 | `downloads` | Save generated Markdown through Chrome's Save dialog. |
 | `nativeMessaging` | Contact the optional local editor helper when requested. |
 
@@ -96,6 +108,7 @@ The optional browser smoke tests use Playwright with its Chromium browser instal
 ```sh
 node tests/browser-smoke.mjs
 node tests/duplicates-browser-smoke.mjs
+node tests/tabs-browser-smoke.mjs
 ```
 
 If Playwright is installed outside this project, point to its module entrypoint:
@@ -103,6 +116,7 @@ If Playwright is installed outside this project, point to its module entrypoint:
 ```sh
 PLAYWRIGHT_MODULE="<absolute-path-to-playwright>/index.mjs" node tests/browser-smoke.mjs
 PLAYWRIGHT_MODULE="<absolute-path-to-playwright>/index.mjs" node tests/duplicates-browser-smoke.mjs
+PLAYWRIGHT_MODULE="<absolute-path-to-playwright>/index.mjs" node tests/tabs-browser-smoke.mjs
 ```
 
 Tests using a mocked editor launch establish the save/message contract; actual editor display requires separate GUI verification. After editing extension files, reload the extension at `chrome://extensions`. After changing native-helper files, rerun the helper installer.

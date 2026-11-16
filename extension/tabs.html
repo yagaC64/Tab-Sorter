@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage open tabs · Tab Sorter</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="duplicates.css">
+  <link rel="stylesheet" href="tabs.css">
+</head>
+<body class="review-page tabs-page">
+  <header><span class="mark" aria-hidden="true">AZ<span>↓</span></span><div><p class="eyebrow">TAB SORTER</p><h1>See every open tab.</h1><p>Top to bottom here is left to right in your tab strip.</p></div></header>
+  <main>
+    <section class="review-intro" aria-labelledby="picker-heading">
+      <div class="section-heading"><h2 id="picker-heading">Choose tabs to close</h2><span class="tag">This Chrome profile</span></div>
+      <label for="tab-search">Filter by title or address</label>
+      <input id="tab-search" type="search" placeholder="Find a tab…" autocomplete="off" disabled>
+      <div class="picker-options"><label class="check"><input id="allow-pinned" type="checkbox" disabled> Allow selecting pinned tabs</label><button id="refresh-tabs" class="secondary" type="button" disabled>Refresh list</button></div>
+      <details class="picker-help"><summary>Selection tips and protected tabs</summary><p class="hint">Nothing is selected automatically. Use <strong>Show tab</strong> to inspect a tab first. Changing the filter, refreshing, or collapsing a window clears the affected selection. Shared groups, split-view tabs, loading tabs, and Tab Sorter pages stay open. Review unsaved work before closing.</p></details>
+      <div class="review-toolbar"><label class="check"><input id="select-shown" type="checkbox" disabled> Select shown tabs</label><button id="clear-selection" class="secondary" type="button" disabled>Clear selection</button></div>
+    </section>
+    <p id="scan-summary" role="status" aria-live="polite">Reading open tabs…</p>
+    <div id="tab-windows" aria-label="Open tabs by window" aria-busy="true"></div>
+    <section id="close-result" hidden aria-labelledby="result-heading"><h2 id="result-heading">Close results</h2><p id="result-summary" role="status" aria-live="polite"></p><ul id="result-details"></ul></section>
+    <p id="review-error" role="alert" hidden></p>
+  </main>
+  <footer class="review-footer"><div><strong id="selection-count">0 tabs selected</strong><p>Only checked tabs will close. The rest stay in order.</p></div><button id="close-selected" type="button" disabled>Close selected tabs</button></footer>
+  <script type="module" src="tabs-page.js"></script>
+</body>
+</html>
